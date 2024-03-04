@@ -1,5 +1,9 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
+import ButtonCounter from "./components/ButtonCounter.vue";
+import BlogPost from "./components/BlogPost.vue";
+import PaginatePost from "./components/PaginatePost.vue";
+import LoadingSpinner from "./components/LoadingSpinner.vue";
 
 const name = "Vue 3";
 const styleColor = "color:blue";
@@ -25,32 +29,63 @@ const add = () => {
 const clear = () => {
   arrayFavoritos.value = [];
 };
-const classCounter = computed(() => {
-  if (counter.value === 0) {
-    return "zero";
-  } else if (counter.value > 0) {
-    return "positive";
-  } else {
-    return "negative";
-  }
-});
 const counterExiste = computed(() => {
   const found = arrayFavoritos.value.find((e) => e === counter.value);
   return found || found === 0;
 });
+const postXpage = 10;
+const inicio = ref(0);
+const fin = ref(postXpage);
+const loading = ref(false);
+
+const maxLength = computed(() => posts.value.length);
+const next = () => {
+  inicio.value += postXpage;
+  fin.value += postXpage;
+};
+const prev = () => {
+  inicio.value += -postXpage;
+  fin.value += -postXpage;
+};
+
+const favorito = ref("");
+const cambiarFavorito = (title) => {
+  favorito.value = title;
+};
+const posts = ref([]);
+
+onMounted(() => {});
+const fetchData = async () => {
+  loading.value = true;
+  try {
+    const res = await fetch("https://jsonplaceholder.typicode.com/posts");
+    posts.value = await res.json();
+  } catch (error) {
+    console.log(error);
+  } finally {
+    loading.value = false;
+  }
+};
+fetchData();
+/* fetch("https://jsonplaceholder.typicode.com/posts")
+    .then((res) => res.json())
+    .then((data) => (posts.value = data))
+    .catch((e) => console.log(e))
+    .finally(() => (loading.value = false)); */
 </script>
 <template>
-  <div class="container text-center mt-3">
+  <LoadingSpinner v-if="loading" />
+  <div v-else class="container text-left mt-3">
     <h1>Hola {{ name.toUpperCase() }} dinámico</h1>
     <br />
-    <h2 :style="styleColor">Soy Oscar</h2>
+    <h2 :style="styleColor">Mi Post Favorito: {{ favorito }}</h2>
     <br />
     <div :style="`color:${activo ? arrayColores[2] : arrayColores[1]}`">
       <button @click="handleClick">📍</button>
       {{ activo ? "Estoy activo" : "Estoy inactivo" }}
     </div>
     <br />
-    <h2 :class="classCounter">{{ counter }}</h2>
+    <ButtonCounter :counterValue="counter" />
     <br />
     <div class="btn-group">
       <button class="btn btn-success" :disabled="!activo" @click="increment">
@@ -79,6 +114,22 @@ const counterExiste = computed(() => {
         {{ num }}
       </li>
     </ul>
+    <PaginatePost
+      class="mb-2"
+      @next="next"
+      @prev="prev"
+      :inicio="inicio"
+      :fin="fin"
+      :maxLength="maxLength"
+    />
+    <BlogPost
+      v-for="post in posts.slice(inicio, fin)"
+      :key="post.id"
+      :id="post.id"
+      :title="post.title"
+      :body="post.body"
+      @cambiarFavorito="cambiarFavorito"
+    ></BlogPost>
   </div>
 </template>
 <style>
